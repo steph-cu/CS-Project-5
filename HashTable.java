@@ -53,7 +53,7 @@ public class HashTable<E extends Comparable<? super E>>
      * @param x the item to insert.
      */
   
-    private int myhash( E x )
+    private int myhash( E x )// i decided to keep these this way sue me
     {
         int hashVal = x.hashCode( );
 
@@ -64,7 +64,7 @@ public class HashTable<E extends Comparable<? super E>>
         return hashVal;
     }
 	private int myhash2(E x){
-		int hashVal = x.hashCode();// need to fix 
+		int hashVal = x.hashCode();
 		
 		hashVal %= array2.length;
 		if( hashVal < 0) 
@@ -72,50 +72,42 @@ public class HashTable<E extends Comparable<? super E>>
 		
 		return hashVal;
 	}
-	private int findPos(E x){
-		return myhash(x);
+	private int findPos(E x, int arrayNum){// finds where it needs to be put 
+		if (arrayNum == 1) return myhash(x);
+		else return myhash2(x);
 	}
-	private int findPos2(E x){
-		return myhash2(x);
+	public E getPos(E x, int arrayNum){// gets the thing that your searching for 
+		if (arrayNum == 1) return array[findPos(x, 1)].element;
+		else return array2[findPos(x, 2)].element;
 	}
-	public E getPos(E x){
-		return array[findPos(x)].element;
+	public E get(int x, int arrayNum){// finds a certain part in the array 
+		if (arrayNum == 1) return array[x].element;
+		else return array2[x].element;
 	}
-	public E getPos2(E x){
-		return array2[findPos2(x)].element;
+	public int ArrayLength(int arrayNum){// returns array length
+		if (arrayNum == 1) return array.length;
+		else return array2.length;
+		//return array.length;
 	}
-	public E get(int x){
-		return array[x].element;
-	}
-	public E get2(int x){
-		return array2[x].element;
-	}
-	public int ArrayLength1(){
-		return array.length;
-	}
-	public int ArrayLength2(){
-		return array2.length;
-	}
+	
 	
 	
 	public boolean insert(E x){
-		int possiblePos = findPos(x);// where it goes in first table
-		int possiblePos2 = findPos2(x); // where it goes in second table
+		int possiblePos = findPos(x, 1);// where it goes in first table
+		int possiblePos2 = findPos(x, 2); // where it goes in second table
 		insertCt++;// increases number of times we've used insert()
 		if (array[possiblePos] != null && array[possiblePos].element.compareTo(x) == 0){// if the place isn't null and it isn't the same thing
-			//array[possiblePos].element.incFreq()// move this to be used in main
 			return false;// returns false
 		}
 		if (array2[possiblePos2] != null && array2[possiblePos2].element.compareTo(x) == 0){
-			//array2[possiblePos2].element.incFreq();
 			return false;
 		}
-		if (!isActive(possiblePos)){// if place 1 is empty  put it in there
+		if (!isActive(possiblePos, 1)){// if place 1 is empty  put it in there
 			array[possiblePos] = new HashEntry<>(x, true);
 			currentActiveEntries++;// increases number of cities in the first one 
 			return true;
 		}
-		else if(!isActive2(possiblePos2)){// if place 2 is empty
+		else if(!isActive(possiblePos2, 2)){// if place 2 is empty
 			array2[possiblePos2] = new HashEntry<>(x, true);
 			currentActiveEntries2++;// inc numb in 2nd one 
 			return true;
@@ -123,44 +115,35 @@ public class HashTable<E extends Comparable<? super E>>
 		else{
 			HashEntry<E> hold = array[possiblePos];// will take what's in this position
 			array[possiblePos] = new HashEntry<>(x, true);// puts new one in
-			return replant2(hold);//we'll replant the new one and return if it got planted
+			return replant(hold, 2);//we'll replant the new one and return if it got planted
 			//return true
 		} 
 	}
 	
-	private boolean replant(HashEntry<E> hold){
+	private boolean replant(HashEntry<E> hold, int arrayNum){// goes and replants things that have been pushed into other table
 		insertProbeCt++;// added amount of times we needed to probe with insert 
-		int otherPos = findPos(hold.element);// checks other position
+		int otherPos = findPos(hold.element, arrayNum);// checks other position
 		if (++replanting > REPLANT_MAX){// if we've made a big cycle lets recycle
 			return rehash(hold);
 			//return;
 		}
-		if (!isActive(otherPos)){ //if its empty we'll put 
+		if (!isActive(otherPos, arrayNum)){ //if its empty we'll put 
 			currentActiveEntries++;
+			if (arrayNum == 1) array[otherPos] = hold;
+			else array2[otherPos] = hold;
+			replanting = 0;
+			return true;
+		}
+		if (arrayNum == 1){ 
+			HashEntry<E> held = array[otherPos];
 			array[otherPos] = hold;
-			replanting = 0;
-			return true;
+			return replant(held, 2);
 		}
-		HashEntry<E> held = array[otherPos];
-		array[otherPos] = hold;
-		return replant2(held);
-	}
-	private boolean replant2(HashEntry<E> hold){
-		insertProbeCt++;
-		int otherPos = findPos2(hold.element);
-		if (++replanting > REPLANT_MAX){
-			return rehash(hold);
-			//return;
-		}
-		if (!isActive2(otherPos)){ 
-			currentActiveEntries2++;
+		else{
+			HashEntry<E> held = array2[otherPos];
 			array2[otherPos] = hold;
-			replanting = 0;
-			return true;
+			return replant(held, 1);
 		}
-		HashEntry<E> held = array2[otherPos];
-		array2[otherPos] = hold;
-		return replant(held);
 	}
 	 
     /**
@@ -179,7 +162,7 @@ public class HashTable<E extends Comparable<? super E>>
         currentActiveEntries = 0;
 		currentActiveEntries2 = 0;
 
-        // Copy table over
+        // Copy tables over
 		insert(held.element);
         for( HashEntry<E> entry : oldArray )
             if( entry != null && entry.isActive )
@@ -213,16 +196,16 @@ public class HashTable<E extends Comparable<? super E>>
 		sb.append("insertCoutn " + insertCt + " probe count + " + (insertCt + insertProbeCt) + " probes/insert " +((insertCt + insertProbeCt)/insertCt)+ " rehashCount " + rehashing );
 		return sb.toString();
     }
-
+	
     /**
      * Remove from the hash table.
      * @param x the item to remove.
      * @return true if item removed
      */
-    public boolean remove( E x )
+    public boolean remove( E x )// ignore
     {
-        int currentPos = findPos( x );
-        if( isActive( currentPos ) )
+        int currentPos = findPos( x, 1 );
+        if( isActive( currentPos, 1 ) )
         {
             array[ currentPos ].isActive = false;
             currentActiveEntries--;
@@ -236,7 +219,7 @@ public class HashTable<E extends Comparable<? super E>>
      * Get current size.
      * @return the size.
      */
-    public int size( )
+    public int size( )// ignore
     {
         return currentActiveEntries;
     }
@@ -245,7 +228,7 @@ public class HashTable<E extends Comparable<? super E>>
      * Get length of internal table.
      * @return the size.
      */
-    public int capacity( )
+    public int capacity( )// ignore
     {
         return array.length;
     }
@@ -255,12 +238,12 @@ public class HashTable<E extends Comparable<? super E>>
      * @param x the item to search for.
      * @return true if item is found
      */
-    public boolean contains( E x )
+    public boolean contains( E x )// should return true if it's in the arrays
     {
-        int currentPos = findPos( x );
-		int currentPos2 = findPos2( x );
+        int currentPos = findPos( x, 1 );
+		int currentPos2 = findPos( x, 2 );
         //return isActive( currentPos ) || isActive2( currentPos2 );
-		return array[currentPos].element.compareTo(x) == 0 || array2[currentPos2].element.compareTo(x) == 0;
+		return (array[currentPos].element.compareTo(x) == 0) || (array2[currentPos2].element.compareTo(x) == 0);
     }
 
     /**
@@ -268,10 +251,10 @@ public class HashTable<E extends Comparable<? super E>>
      * @param x the item to search for.
      * @return the matching item.
      */
-    public E find( E x )
+    public E find( E x )// ignore
     {
-        int currentPos = findPos( x );
-        if (!isActive( currentPos )) {
+        int currentPos = findPos( x, 1 );
+        if (!isActive( currentPos, 1 )) {
             return null;
         }
         else {
@@ -284,23 +267,21 @@ public class HashTable<E extends Comparable<? super E>>
      * @param currentPos the result of a call to findPos.
      * @return true if currentPos is active.
      */
-    public boolean isActive( int currentPos )
+    public boolean isActive( int currentPos, int arrayNum )// if the position in the array is active returns true 
     {
-        return array[ currentPos ] != null && array[ currentPos ].isActive;
+		if (arrayNum == 1) return array[currentPos] != null && array[currentPos].isActive;
+		else return array2[ currentPos ] != null && array2[ currentPos ].isActive;
     }
-	public boolean isActive2(int currentPos){
-		return array2[currentPos] != null && array[currentPos].isActive; 
-	}
 
     /**
      * Make the hash table logically empty.
      */
-    public void makeEmpty( )
+    public void makeEmpty( )//ignore
     {
         doClear( );
     }
 
-    private void doClear( )
+    private void doClear( )//ignore
     {
         for( int i = 0; i < array.length; i++ )
             array[ i ] = null;
@@ -378,7 +359,7 @@ public class HashTable<E extends Comparable<? super E>>
 	public static void main( String [ ] args ) 
 	{
 		
-		HashTable<String> dicTable = new HashTable<>();// makes new dicTable
+		HashTable<String> dicTable = new HashTable<>();
 		ArrayList<String> dicList = new ArrayList<String>();
 		int counting = 0;
 		File dictionary = new File("dictionary.txt");//gets file
@@ -391,16 +372,15 @@ public class HashTable<E extends Comparable<? super E>>
 				dicLine = dic.nextLine();
 				dicLine = dicLine.toLowerCase().replaceAll("\\p{Punct}","");// gets rid of punctuation and uppercase
 				dicW = dicLine.split(" ");// slits the line into words 
-				for (String dicWords: dicW){
-					counting++;
+				for (String dicWord: dicW){
+					//counting++;
 					//System.out.println("\n"+dicWords);
-					dicTable.insert(dicWords);
-					dicList.add(dicWords);
+					dicTable.insert(dicWord);
+					dicList.add(dicWord);
 				}
 			}
 		}
 		catch (Exception e){}
-		System.out.println(counting);
 		System.out.println("This is from File: dictionary.txt: \n" );
 		System.out.println(dicTable.printTable(10, "dictionary.txt"));
 		
@@ -409,8 +389,8 @@ public class HashTable<E extends Comparable<? super E>>
 			HashTable<WordFreq> misSpelled = new HashTable<>();
 			System.out.println("This is from File: " + paragraphs[i] + ": \n" );
 			try{
-				System.out.println("made it into try");
-				Scanner para = new Scanner(new File(paragraphs[i]));// probably needs fixing
+				//System.out.println("made it into try");
+				Scanner para = new Scanner(new File(paragraphs[i]));
 				String paraLine;
 				String[] paraW;
 			
@@ -419,30 +399,31 @@ public class HashTable<E extends Comparable<? super E>>
 					paraLine = para.nextLine();// puts line into string
 					paraLine = paraLine.toLowerCase().replaceAll("\\p{Punct}","");// gets rid of punctuation and uppercase
 					paraW = paraLine.split(" ");// splits the line into words 
-					for (String paraWords: paraW){
-						if (dicTable.contains(paraWords)) continue;
-						else {
-							WordFreq newWord = new WordFreq(paraWords);
-							if (!misSpelled.insert(newWord)){
-								if (misSpelled.getPos(newWord).compareTo(newWord) == 0) misSpelled.getPos(newWord).incFreq();
-								else misSpelled.getPos2(newWord).incFreq();
+					for (String paraWord: paraW){
+						if (!dicTable.contains(paraWord)){// if word isn't in dictionary
+							counting++;
+							WordFreq newWord = new WordFreq(paraWord);
+							if (!misSpelled.insert(newWord)){// if word is already in there 
+								if (misSpelled.getPos(newWord, 1).compareTo(newWord) == 0) misSpelled.getPos(newWord, 1).incFreq();
+								else misSpelled.getPos(newWord, 2).incFreq();
 							}
 						}
 					}
 				}
-				System.out.println(misSpelled.printTable(20, paragraphs[i] ));
-				for (int x = 0; x < misSpelled.ArrayLength1(); x++){
-					if (misSpelled.isActive(x)) misSpelled.get(x).findClose(dicList);//needs to get each thing in area
-					System.out.println(" - " + misSpelled.get(x).word +"("+ misSpelled.get(x).freq + "):");
-					misSpelled.get(x).mCase.printMatches();
-				}
-				for (int y = 0; y < misSpelled.ArrayLength2(); y++){
-					if (misSpelled.isActive2(y)) misSpelled.get2(y).findClose(dicList);
-					System.out.println(" - " + misSpelled.get2(y).word +"("+ misSpelled.get2(y).freq + "):");
-					misSpelled.get2(y).mCase.printMatches();
-				}	
 			}
 			catch(Exception e){}
+			System.out.println(counting);
+			System.out.println(misSpelled.printTable(20, paragraphs[i] ));
+			for (int x = 0; x < misSpelled.ArrayLength(1); x++){// these print out the close matching cases
+				if (misSpelled.isActive(x, 1)) misSpelled.get(x, 1).findClose(dicList);//needs to get each thing in area
+				System.out.println(" - " + misSpelled.get(x, 1).word +"("+ misSpelled.get(x, 1).freq + "):");
+				misSpelled.get(x, 1).mCase.printMatches();
+			}
+			for (int y = 0; y < misSpelled.ArrayLength(2); y++){
+				if (misSpelled.isActive(y, 2)) misSpelled.get(y, 2).findClose(dicList);
+				System.out.println(" - " + misSpelled.get(y, 2).word +"("+ misSpelled.get(y, 2).freq + "):");
+				misSpelled.get(y, 2).mCase.printMatches();
+			}	
 		}
 	}
 
